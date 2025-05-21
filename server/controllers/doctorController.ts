@@ -90,43 +90,40 @@ export const createDoctor = asyncHandler(async (req: Request, res: Response) => 
       });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create user
+    // Create user first
     const [userResult] = await connection.query(
       'INSERT INTO users (id, first_name, last_name, email, password, role) VALUES (UUID(), ?, ?, ?, ?, ?)',
       [first_name, last_name, email, password, UserRole.DOCTOR]
     );
 
-    const userId = (userResult as any).insertId;
+    // Get the generated user ID
+    const [userRows] = await connection.query(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    );
+    const userId = (userRows as any[])[0].id;
 
-    // Create doctor
+    // Create doctor with the user ID
     const [doctorResult] = await connection.query(
       'INSERT INTO doctors (id, user_id, category_id, specialization, experience, bio, avatar) VALUES (UUID(), ?, ?, ?, ?, ?, ?)',
       [userId, category_id, specialization, experience, bio || null, avatar || null]
     );
 
-    const doctorId = (doctorResult as any).insertId;
+    // Get the created doctor with full details
+    const [newDoctor] = await connection.query(`
+      SELECT d.*, u.first_name, u.last_name, u.email, c.name as categoryName
+      FROM doctors d
+      JOIN users u ON d.user_id = u.id
+      JOIN categories c ON d.category_id = c.id
+      WHERE u.id = ?
+    `, [userId]);
 
     // Commit transaction
     await connection.commit();
 
     res.status(201).json({
       success: true,
-      data: {
-        id: doctorId,
-        user_id: userId,
-        first_name,
-        last_name,
-        email,
-        category_id,
-        specialization,
-        experience,
-        bio,
-        avatar,
-      },
+      data: (newDoctor as any[])[0],
     });
   } catch (error) {
     await connection.rollback();

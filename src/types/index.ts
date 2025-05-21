@@ -1,6 +1,6 @@
 // User related types
 export interface User {
-  id: number;
+  id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -16,7 +16,7 @@ export enum UserRole {
 }
 
 export interface UserAuth {
-  id: number;
+  id: string;
   email: string;
   role: UserRole;
   token: string;
@@ -24,12 +24,12 @@ export interface UserAuth {
 
 // Doctor related types
 export interface Doctor {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   first_name: string;
   last_name: string;
   email: string;
-  category_id: number;
+  category_id: string;
   categoryName?: string;
   specialization: string;
   experience: number;
@@ -41,7 +41,7 @@ export interface Doctor {
 
 // Category related types
 export interface Category {
-  id: number;
+  id: string;
   name: string;
   description: string;
   created_at: string;
@@ -50,9 +50,9 @@ export interface Category {
 
 // Appointment related types
 export interface Appointment {
-  id: number;
-  doctor_id: number;
-  patient_id: number;
+  id: string;
+  doctor_id: string;
+  patient_id: string;
   date: string;
   start_time: string;
   end_time: string;

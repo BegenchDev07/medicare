@@ -50,28 +50,27 @@ const Login: React.FC = () => {
 
     try {
       const user:any = await login(email, password);      
-      if (!user) {
-        // user.role = 'admin'
-        throw new Error('Failed to sign in');
-      }
-      
       showNotification('success', 'Successfully logged in!');
       
       // Redirect based on user role
-      if (user.role === UserRole.ADMIN) {      
-        navigate('/admin/dashboard');
-      } else if (user.role === UserRole.DOCTOR) {
-        navigate('/doctor/dashboard');
-      } else {
-        navigate('/patient/dashboard');
+      switch (user.role) {
+        case UserRole.ADMIN:
+          navigate('/admin/dashboard');
+          break;
+        case UserRole.DOCTOR:
+          navigate('/doctor/dashboard');
+          break;
+        case UserRole.PATIENT:
+          navigate('/patient/dashboard');
+          break;
+        default:
+          navigate('/');
       }
     } catch (err: any) {
-      // Log the error in development
       if (process.env.NODE_ENV !== 'production') {
         console.error('Login error:', err);
       }
 
-      // Handle specific error messages from Supabase
       const errorMessage = err?.message?.toLowerCase() || '';
       
       if (errorMessage.includes('invalid login credentials') || 
@@ -94,12 +93,8 @@ const Login: React.FC = () => {
       } else {
         showNotification('error', 'An error occurred while signing in. Please try again later.');
       }
-
-      // Add a delay before allowing another attempt
-      setTimeout(() => {
-        setIsLoading(false);
-        setPassword('');
-      }, 10000);
+    } finally {
+      setIsLoading(false);
     }
   };
 

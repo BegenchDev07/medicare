@@ -9,6 +9,7 @@ interface AlertProps {
   message: string;
   dismissible?: boolean;
   className?: string;
+  onDismiss?: () => void;
 }
 
 const Alert: React.FC<AlertProps> = ({
@@ -17,8 +18,14 @@ const Alert: React.FC<AlertProps> = ({
   message,
   dismissible = true,
   className = '',
+  onDismiss,
 }) => {
   const [dismissed, setDismissed] = useState(false);
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    onDismiss?.();
+  };
 
   if (dismissed) {
     return null;
@@ -66,7 +73,7 @@ const Alert: React.FC<AlertProps> = ({
           <div className="-mx-1.5 -my-1.5">
             <button
               type="button"
-              onClick={() => setDismissed(true)}
+              onClick={handleDismiss}
               className={`inline-flex rounded-md p-1.5 ${
                 iconColors[type]
               } hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-${type}-50 focus:ring-${type}-500`}

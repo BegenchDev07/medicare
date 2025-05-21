@@ -18,6 +18,7 @@ import Register from './pages/Register';
 import AdminDashboard from './pages/admin/Dashboard';
 import ManageDoctors from './pages/admin/ManageDoctors';
 import ManageCategories from './pages/admin/ManageCategories';
+import AdminAppointments from './pages/admin/Appointments';
 
 // Doctor pages
 import DoctorDashboard from './pages/doctor/Dashboard';
@@ -59,6 +60,7 @@ function App() {
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="doctors" element={<ManageDoctors />} />
                 <Route path="categories" element={<ManageCategories />} />
+                <Route path="appointments" element={<AdminAppointments />} />
               </Route>
 
               {/* Doctor routes */}
@@ -103,4 +105,4 @@ function App() {
   );
 }
 
-export default App
+export default App;

@@ -2,17 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
-import FormField from '../../components/common/FormField';
 import Alert from '../../components/common/Alert';
-import { apiGet, apiDelete } from '../../utils/api';
+import CategoryModal from '../../components/admin/CategoryModal';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/api';
 import { Category } from '../../types';
+import { useNotification } from '../../contexts/NotificationContext';
+
+interface CategoryWithDoctorCount extends Category {
+  doctorCount: number;
+}
 
 const ManageCategories: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<CategoryWithDoctorCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<Category | undefined>();
+  
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     fetchCategories();
@@ -20,7 +28,7 @@ const ManageCategories: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await apiGet<Category[]>('/categories');
+      const response = await apiGet<CategoryWithDoctorCount[]>('/categories');
       if (response.success && response.data) {
         setCategories(response.data);
       } else {
@@ -33,6 +41,42 @@ const ManageCategories: React.FC = () => {
     }
   };
 
+  const handleAdd = () => {
+    setSelectedCategory(undefined);
+    setShowModal(true);
+  };
+
+  const handleEdit = (category: Category) => {
+    setSelectedCategory(category);
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (data: { name: string; description: string }) => {
+    try {
+      if (selectedCategory) {
+        // Update existing category
+        const response = await apiPut(`/categories/${selectedCategory.id}`, data);
+        if (response.success) {
+          showNotification('success', 'Category updated successfully');
+          fetchCategories();
+        } else {
+          throw new Error(response.error || 'Failed to update category');
+        }
+      } else {
+        // Create new category
+        const response = await apiPost('/categories', data);
+        if (response.success) {
+          showNotification('success', 'Category created successfully');
+          fetchCategories();
+        } else {
+          throw new Error(response.error || 'Failed to create category');
+        }
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this category?')) {
       return;
@@ -41,7 +85,8 @@ const ManageCategories: React.FC = () => {
     try {
       const response = await apiDelete(`/categories/${id}`);
       if (response.success) {
-        setCategories(categories.filter(category => category.id !== id));
+        showNotification('success', 'Category deleted successfully');
+        setCategories(categories.filter((category:any) => category.id !== id));
       } else {
         setError(response.error || 'Failed to delete category');
       }
@@ -73,7 +118,7 @@ const ManageCategories: React.FC = () => {
           </p>
         </div>
         <Button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleAdd}
           icon={<Plus size={18} />}
         >
           Add Category
@@ -119,7 +164,7 @@ const ManageCategories: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredCategories.map((category) => (
+              {filteredCategories.map((category:any) => (
                 <tr key={category.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -133,7 +178,7 @@ const ManageCategories: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-primary-100 text-primary-800">
-                      0 doctors
+                      {category.doctorCount} doctors
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -142,7 +187,7 @@ const ManageCategories: React.FC = () => {
                       size="sm"
                       icon={<Edit size={16} />}
                       className="mr-2"
-                      onClick={() => {/* Handle edit */}}
+                      onClick={() => handleEdit(category)}
                     >
                       Edit
                     </Button>
@@ -168,6 +213,14 @@ const ManageCategories: React.FC = () => {
           </table>
         </div>
       </Card>
+
+      <CategoryModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleSubmit}
+        category={selectedCategory}
+        title={selectedCategory ? 'Edit Category' : 'Add Category'}
+      />
     </div>
   );
 };

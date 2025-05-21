@@ -8,9 +8,15 @@ import pool from '../db/config';
  */
 export const getCategories = async (req: Request, res: Response) => {
   try {
-    const [categories] = await pool.query(
-      'SELECT * FROM categories ORDER BY name'
-    );
+    const [categories] = await pool.query(`
+      SELECT 
+        c.*,
+        COUNT(d.id) as doctorCount
+      FROM categories c
+      LEFT JOIN doctors d ON c.id = d.category_id
+      GROUP BY c.id
+      ORDER BY c.name
+    `);
 
     res.json({
       success: true,
@@ -33,10 +39,15 @@ export const getCategories = async (req: Request, res: Response) => {
 export const getCategoryById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const [categories] = await pool.query(
-      'SELECT * FROM categories WHERE id = ?',
-      [id]
-    );
+    const [categories] = await pool.query(`
+      SELECT 
+        c.*,
+        COUNT(d.id) as doctorCount
+      FROM categories c
+      LEFT JOIN doctors d ON c.id = d.category_id
+      WHERE c.id = ?
+      GROUP BY c.id
+    `, [id]);
 
     const category = (categories as any[])[0];
 
@@ -147,10 +158,15 @@ export const updateCategory = async (req: Request, res: Response) => {
       });
     }
 
-    const [categories] = await pool.query(
-      'SELECT * FROM categories WHERE id = ?',
-      [id]
-    );
+    const [categories] = await pool.query(`
+      SELECT 
+        c.*,
+        COUNT(d.id) as doctorCount
+      FROM categories c
+      LEFT JOIN doctors d ON c.id = d.category_id
+      WHERE c.id = ?
+      GROUP BY c.id
+    `, [id]);
 
     res.json({
       success: true,

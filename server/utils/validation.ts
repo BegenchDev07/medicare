@@ -27,7 +27,7 @@ export const createDoctorSchema = Joi.object({
   last_name: Joi.string().min(2).max(100).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
-  category_id: Joi.number().integer().positive().required(),
+  category_id: Joi.string().uuid().required(),
   specialization: Joi.string().required(),
   experience: Joi.number().integer().min(0).required(),
   bio: Joi.string().max(500).allow(''),
@@ -35,7 +35,7 @@ export const createDoctorSchema = Joi.object({
 });
 
 export const updateDoctorSchema = Joi.object({
-  category_id: Joi.number().integer().positive(),
+  category_id: Joi.string().uuid(),
   specialization: Joi.string(),
   experience: Joi.number().integer().min(0),
   bio: Joi.string().max(500).allow(''),
@@ -53,15 +53,13 @@ export const updateCategorySchema = Joi.object({
   description: Joi.string().allow(''),
 }).min(1);
 
-// server/utils/validation.ts
 export const createAppointmentSchema = Joi.object({
-  doctor_id: Joi.string().uuid().required(),  // Changed from number to string.uuid()
+  doctor_id: Joi.string().uuid().required(),
   date: Joi.date().iso().required(),
   start_time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
   end_time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
   notes: Joi.string().allow(''),
 });
-
 
 export const updateAppointmentSchema = Joi.object({
   status: Joi.string().valid(...Object.values(AppointmentStatus)),
@@ -70,7 +68,7 @@ export const updateAppointmentSchema = Joi.object({
 
 // Schedule validation schemas
 export const createScheduleSchema = Joi.object({
-  doctor_id: Joi.number().integer().positive().required(),
+  doctor_id: Joi.string().uuid().required(),
   day: Joi.date().iso().required(),
   start_time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),
   end_time: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/).required(),

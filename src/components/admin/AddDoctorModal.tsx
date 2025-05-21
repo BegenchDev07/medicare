@@ -13,7 +13,7 @@ interface AddDoctorModalProps {
     last_name: string;
     email: string;
     password: string;
-    category_id: number;
+    category_id: string;
     specialization: string;
     experience: number;
     bio: string;
@@ -53,7 +53,7 @@ const AddDoctorModal: React.FC<AddDoctorModalProps> = ({
     try {
       await onSubmit({
         ...formData,
-        category_id: Number(formData.category_id),
+        category_id: String(formData.category_id),
         experience: Number(formData.experience),
       });
       onClose();
