@@ -19,6 +19,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import ManageDoctors from './pages/admin/ManageDoctors';
 import ManageCategories from './pages/admin/ManageCategories';
 import AdminAppointments from './pages/admin/Appointments';
+import ManagePatients from './pages/admin/ManagePatients';
 
 // Doctor pages
 import DoctorDashboard from './pages/doctor/Dashboard';
@@ -56,9 +57,10 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route index element={<Navigate to="/admin/dashboard\" replace />} />
                 <Route path="dashboard" element={<AdminDashboard />} />
                 <Route path="doctors" element={<ManageDoctors />} />
+                <Route path="patients" element={<ManagePatients />} />
                 <Route path="categories" element={<ManageCategories />} />
                 <Route path="appointments" element={<AdminAppointments />} />
               </Route>
@@ -72,7 +74,7 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/doctor/dashboard" replace />} />
+                <Route index element={<Navigate to="/doctor/dashboard\" replace />} />
                 <Route path="dashboard" element={<DoctorDashboard />} />
                 <Route path="schedule" element={<ManageSchedule />} />
                 <Route path="appointments" element={<ManageAppointments />} />
@@ -87,17 +89,17 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/patient/dashboard" replace />} />
+                <Route index element={<Navigate to="/patient/dashboard\" replace />} />
                 <Route path="dashboard" element={<PatientDashboard />} />
                 <Route path="doctors" element={<DoctorsList />} />
                 <Route path="book/:doctorId" element={<BookAppointment />} />
                 <Route path="appointments" element={<MyAppointments />} />
                 <Route path="profile" element={<Profile />} />
               </Route>
-            </Route>
 
-            {/* Catch all route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Catch all route */}
+              <Route path="*" element={<Navigate to="/\" replace />} />
+            </Route>
           </Routes>
         </Router>
       </NotificationProvider>
@@ -105,4 +107,4 @@ function App() {
   );
 }
 
-export default App;
+export default App

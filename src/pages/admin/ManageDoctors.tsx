@@ -4,7 +4,8 @@ import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import Alert from '../../components/common/Alert';
 import AddDoctorModal from '../../components/admin/AddDoctorModal';
-import { apiGet, apiPost, apiDelete } from '../../utils/api';
+import EditDoctorModal from '../../components/admin/EditDoctorModal';
+import { apiGet, apiPost, apiPut, apiDelete } from '../../utils/api';
 import { Doctor, Category } from '../../types';
 import { useNotification } from '../../contexts/NotificationContext';
 
@@ -15,6 +16,8 @@ const ManageDoctors: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   
   const { showNotification } = useNotification();
 
@@ -62,7 +65,21 @@ const ManageDoctors: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleEditDoctor = async (doctorData: any) => {
+    try {
+      const response = await apiPut(`/doctors/${selectedDoctor?.id}`, doctorData);
+      if (response.success) {
+        showNotification('success', 'Doctor updated successfully');
+        fetchDoctors();
+      } else {
+        throw new Error(response.error || 'Failed to update doctor');
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this doctor?')) {
       return;
     }
@@ -78,6 +95,11 @@ const ManageDoctors: React.FC = () => {
     } catch (error) {
       setError('Failed to delete doctor');
     }
+  };
+
+  const handleEdit = (doctor: Doctor) => {
+    setSelectedDoctor(doctor);
+    setShowEditModal(true);
   };
 
   const filteredDoctors = doctors.filter(doctor => 
@@ -200,7 +222,7 @@ const ManageDoctors: React.FC = () => {
                       size="sm"
                       icon={<Edit size={16} />}
                       className="mr-2"
-                      onClick={() => {/* Handle edit */}}
+                      onClick={() => handleEdit(doctor)}
                     >
                       Edit
                     </Button>
@@ -233,6 +255,19 @@ const ManageDoctors: React.FC = () => {
         onSubmit={handleAddDoctor}
         categories={categories}
       />
+
+      {selectedDoctor && (
+        <EditDoctorModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedDoctor(null);
+          }}
+          onSubmit={handleEditDoctor}
+          categories={categories}
+          doctor={selectedDoctor}
+        />
+      )}
     </div>
   );
 };

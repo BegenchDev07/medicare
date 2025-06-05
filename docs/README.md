@@ -5,6 +5,7 @@
 A comprehensive hospital management system built with React, TypeScript, and Node.js, featuring role-based access control, appointment scheduling, and doctor management.
 
 ## Tech Stack
+
 ### Frontend
 - React 18.3.1 with TypeScript
 - Vite for bundling

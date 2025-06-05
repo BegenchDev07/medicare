@@ -7,7 +7,7 @@ import {
   deleteDoctor,
   getDoctorsByCategory,
 } from '../controllers/doctorController';
-import { authenticateToken, isAdmin, isAdminOrSelf } from '../middleware/auth';
+import { authenticateToken, isAdmin } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 import { createDoctorSchema, updateDoctorSchema } from '../utils/validation';
 
@@ -49,8 +49,8 @@ router.post(
 
 /**
  * @route   PUT /api/doctors/:id
- * @desc    Update a doctor (Admin or Self)
- * @access  Private/Admin or Self
+ * @desc    Update a doctor (Admin only)
+ * @access  Private/Admin
  */
 router.put(
   '/:id',

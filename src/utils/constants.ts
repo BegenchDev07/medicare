@@ -17,6 +17,7 @@ export const MAX_APPOINTMENTS_PER_DAY = 10;
 export const ADMIN_NAV_ITEMS = [
   { name: 'Dashboard', path: '/admin/dashboard' },
   { name: 'Manage Doctors', path: '/admin/doctors' },
+  { name: 'Manage Patients', path: '/admin/patients' },
   { name: 'Manage Categories', path: '/admin/categories' },
 ];
 

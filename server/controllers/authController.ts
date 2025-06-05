@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import pool from '../db/config';
 import { asyncHandler } from '../middleware/errorHandler';
 import { UserRole } from '../types';
+import { v4 as uuidv4 } from 'uuid';
 
 // Get JWT secret from environment or use default
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
@@ -74,11 +75,11 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 
 // Register new user
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const { firstName, lastName, email, password, role = UserRole.PATIENT } = req.body;
+  const { first_name, last_name, email, password, role = UserRole.PATIENT } = req.body;
 
   try {
     // Input validation
-    if (!firstName || !lastName || !email || !password) {
+    if (!first_name || !last_name || !email || !password) {
       return res.status(400).json({
         success: false,
         error: 'All fields are required',
@@ -105,19 +106,19 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Generate UUID for new user
+    const userId = uuidv4();
 
     // Create user in database
-    const [result] = await pool.query(
-      'INSERT INTO users (id, first_name, last_name, email, password, role) VALUES (UUID(), ?, ?, ?, ?, ?)',
-      [firstName, lastName, email, password, role]
+    await pool.query(
+      'INSERT INTO users (id, first_name, last_name, email, password, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [userId, first_name, last_name, email, password, role]
     );
 
+    // Fetch the created user
     const [newUser] = await pool.query(
-      'SELECT * FROM users WHERE id = ?',
-      [(result as any).insertId]
+      'SELECT id, first_name, last_name, email, role FROM users WHERE id = ?',
+      [userId]
     );
 
     const user = (newUser as any[])[0];

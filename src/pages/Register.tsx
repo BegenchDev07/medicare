@@ -9,8 +9,8 @@ import { UserRole } from '../types';
 
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -46,8 +46,8 @@ const Register: React.FC = () => {
     try {
       // Register with patient role by default
       await register({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
         email: formData.email,
         password: formData.password,
         role: UserRole.PATIENT,
@@ -90,20 +90,20 @@ const Register: React.FC = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 label="First Name"
-                name="firstName"
+                name="first_name"
                 type="text"
                 required
-                value={formData.firstName}
+                value={formData.first_name}
                 onChange={handleChange}
                 placeholder="First name"
               />
               
               <FormField
                 label="Last Name"
-                name="lastName"
+                name="last_name"
                 type="text"
                 required
-                value={formData.lastName}
+                value={formData.last_name}
                 onChange={handleChange}
                 placeholder="Last name"
               />

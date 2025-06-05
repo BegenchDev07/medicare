@@ -82,6 +82,38 @@ export const getDoctorAppointments = async (req: Request, res: Response) => {
 };
 
 /**
+ * @desc    Get appointments for a specific doctor
+ * @route   GET /api/appointments/doctor/:doctorId
+ * @access  Public
+ */
+export const getDoctorAppointmentsByDoctorId = async (req: Request, res: Response) => {
+  try {
+    const { doctorId } = req.params;
+
+    const [appointments] = await pool.query(`
+      SELECT 
+        a.*,
+        CONCAT(p_user.first_name, ' ', p_user.last_name) as patient_name
+      FROM appointments a
+      JOIN users p_user ON a.patient_id = p_user.id
+      WHERE a.doctor_id = ?
+      ORDER BY a.date ASC, a.start_time ASC
+    `, [doctorId]);
+
+    res.json({
+      success: true,
+      data: appointments
+    });
+  } catch (error) {
+    console.error('Error fetching doctor appointments:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error instanceof Error ? error.message : 'Error fetching appointments'
+    });
+  }
+};
+
+/**
  * @desc    Get appointments for logged-in patient
  * @route   GET /api/appointments/patient
  * @access  Private
@@ -206,11 +238,11 @@ export const updateAppointment = async (req: Request, res: Response) => {
 };
 
 /**
- * @desc    Cancel appointment
+ * @desc    Update appointment status to cancelled
  * @route   DELETE /api/appointments/:id
  * @access  Private
  */
-export const cancelAppointment = async (req: Request, res: Response) => {
+export const updateAppointmentStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const [result] = await pool.query(

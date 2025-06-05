@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Calendar as CalendarIcon, Plus, Trash2, Clock } from 'lucide-react';
 import Button from '../../components/common/Button';
 import Card from '../../components/common/Card';
 import FormField from '../../components/common/FormField';
 import Alert from '../../components/common/Alert';
+import AddScheduleModal from '../../components/doctor/AddScheduleModal';
 import { apiGet, apiPost, apiDelete } from '../../utils/api';
 import { Schedule, TimeSlot, DaySchedule } from '../../types';
 import { format, parseISO, addDays } from 'date-fns';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNotification } from '../../contexts/NotificationContext';
 
 const ManageSchedule: React.FC = () => {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -14,21 +18,45 @@ const ManageSchedule: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
+  const [doctorId, setDoctorId] = useState<string | null>(null);
+  
+  const { user } = useAuth();
+  const { showNotification } = useNotification();
 
   useEffect(() => {
-    fetchSchedules();
+    fetchDoctorId();
   }, []);
 
-  const fetchSchedules = async () => {
+  const fetchDoctorId = async () => {
     try {
-      const response = await apiGet<Schedule[]>('/schedules/doctor');
+      const response = await apiGet<{ id: string; user_id: string }[]>('/doctors');
+      if (response.success && response.data) {
+        const doctor = response.data.find(d => d.user_id === user?.id);
+        if (doctor) {
+          setDoctorId(doctor.id);
+          fetchSchedules(doctor.id);
+        } else {
+          throw new Error('Doctor profile not found');
+        }
+      } else {
+        throw new Error(response.error || 'Failed to fetch doctor profile');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to fetch doctor profile');
+      setLoading(false);
+    }
+  };
+
+  const fetchSchedules = async (docId: string) => {
+    try {
+      const response = await apiGet<Schedule[]>(`/schedules/doctor/${docId}`);
       if (response.success && response.data) {
         setSchedules(response.data);
       } else {
-        setError(response.error || 'Failed to fetch schedules');
+        throw new Error(response.error || 'Failed to fetch schedules');
       }
     } catch (error) {
-      setError('Failed to fetch schedules');
+      setError(error instanceof Error ? error.message : 'Failed to fetch schedules');
     } finally {
       setLoading(false);
     }
@@ -43,14 +71,43 @@ const ManageSchedule: React.FC = () => {
       const response = await apiDelete(`/schedules/${id}`);
       if (response.success) {
         setSchedules(schedules.filter(schedule => schedule.id !== id));
+        showNotification('success', 'Schedule deleted successfully');
       } else {
-        setError(response.error || 'Failed to delete schedule');
+        throw new Error(response.error || 'Failed to delete schedule');
       }
     } catch (error) {
-      setError('Failed to delete schedule');
+      setError(error instanceof Error ? error.message : 'Failed to delete schedule');
     }
   };
 
+  const handleAddSchedule = async (data: {
+    day: string;
+    start_time: string;
+    end_time: string;
+  }) => {
+    if (!doctorId) {
+      setError('Doctor ID not found');
+      return;
+    }
+
+    try {
+      const response = await apiPost('/schedules', {
+        doctor_id: doctorId,
+        ...data,
+      });
+
+      if (response.success) {
+        showNotification('success', 'Schedule added successfully');
+        fetchSchedules(doctorId);
+      } else {
+        throw new Error(response.error || 'Failed to add schedule');
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  // Generate time slots from 9 AM to 5 PM
   const timeSlots = Array.from({ length: 17 }, (_, i) => {
     const hour = Math.floor(i / 2) + 9;
     const minute = i % 2 === 0 ? '00' : '30';
@@ -128,8 +185,7 @@ const ManageSchedule: React.FC = () => {
                           <div className="flex items-center">
                             <Clock className="h-4 w-4 text-gray-400 mr-1" />
                             <span className="text-sm text-gray-600">
-                              {format(parseISO(schedule.startTime), 'HH:mm')} -{' '}
-                              {format(parseISO(schedule.endTime), 'HH:mm')}
+                              {schedule.start_time} - {schedule.end_time}
                             </span>
                           </div>
                           <Button
@@ -164,8 +220,8 @@ const ManageSchedule: React.FC = () => {
               const isAvailable = schedules.some(
                 s =>
                   format(parseISO(s.day), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd') &&
-                  s.startTime <= time &&
-                  s.endTime > time
+                  s.start_time <= time &&
+                  s.end_time > time
               );
 
               return (
@@ -184,6 +240,15 @@ const ManageSchedule: React.FC = () => {
           </div>
         </div>
       </Card>
+
+      {doctorId && (
+        <AddScheduleModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleAddSchedule}
+          doctorId={doctorId}
+        />
+      )}
     </div>
   );
 };

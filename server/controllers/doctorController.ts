@@ -136,47 +136,93 @@ export const createDoctor = asyncHandler(async (req: Request, res: Response) => 
 // Update doctor
 export const updateDoctor = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { category_id, specialization, experience, bio, avatar } = req.body;
+  const { category_id, specialization, experience, bio, avatar, first_name, last_name, email } = req.body;
 
-  // Check if doctor exists
-  const [doctors] = await pool.query(
-    'SELECT * FROM doctors WHERE id = ?',
-    [id]
-  );
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
 
-  if ((doctors as any[]).length === 0) {
-    return res.status(404).json({
-      success: false,
-      error: 'Doctor not found',
+    // Check if doctor exists and get user_id
+    const [doctors] = await connection.query(
+      'SELECT user_id FROM doctors WHERE id = ?',
+      [id]
+    );
+
+    if ((doctors as any[]).length === 0) {
+      await connection.rollback();
+      return res.status(404).json({
+        success: false,
+        error: 'Doctor not found',
+      });
+    }
+
+    const userId = (doctors as any[])[0].user_id;
+
+    // Update user information if provided
+    if (first_name || last_name || email) {
+      // Check if email is taken by another user
+      if (email) {
+        const [existingUsers] = await connection.query(
+          'SELECT id FROM users WHERE email = ? AND id != ?',
+          [email, userId]
+        );
+
+        if ((existingUsers as any[]).length > 0) {
+          await connection.rollback();
+          return res.status(400).json({
+            success: false,
+            error: 'Email already in use',
+          });
+        }
+      }
+
+      await connection.query(
+        `UPDATE users 
+         SET 
+          first_name = COALESCE(?, first_name),
+          last_name = COALESCE(?, last_name),
+          email = COALESCE(?, email),
+          updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [first_name, last_name, email, userId]
+      );
+    }
+
+    // Update doctor information
+    await connection.query(
+      `UPDATE doctors 
+       SET 
+          category_id = COALESCE(?, category_id),
+          specialization = COALESCE(?, specialization),
+          experience = COALESCE(?, experience),
+          bio = COALESCE(?, bio),
+          avatar = COALESCE(?, avatar),
+          updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`,
+      [category_id, specialization, experience, bio, avatar, id]
+    );
+
+    // Get updated doctor
+    const [updatedDoctors] = await connection.query(`
+      SELECT d.*, u.first_name, u.last_name, u.email, c.name as categoryName
+      FROM doctors d
+      JOIN users u ON d.user_id = u.id
+      JOIN categories c ON d.category_id = c.id
+      WHERE d.id = ?
+    `, [id]);
+
+    await connection.commit();
+
+    res.json({
+      success: true,
+      data: (updatedDoctors as any[])[0],
     });
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
   }
-
-  // Update doctor
-  await pool.query(
-    `UPDATE doctors 
-     SET 
-        category_id = COALESCE(?, category_id),
-        specialization = COALESCE(?, specialization),
-        experience = COALESCE(?, experience),
-        bio = COALESCE(?, bio),
-        avatar = COALESCE(?, avatar)
-     WHERE id = ?`,
-    [category_id, specialization, experience, bio, avatar, id]
-  );
-
-  // Get updated doctor
-  const [updatedDoctors] = await pool.query(`
-    SELECT d.*, u.first_name, u.last_name, u.email, c.name as categoryName
-    FROM doctors d
-    JOIN users u ON d.user_id = u.id
-    JOIN categories c ON d.category_id = c.id
-    WHERE d.id = ?
-  `, [id]);
-
-  res.json({
-    success: true,
-    data: (updatedDoctors as any[])[0],
-  });
 });
 
 // Delete doctor

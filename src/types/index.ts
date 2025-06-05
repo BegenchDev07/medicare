@@ -62,6 +62,7 @@ export interface Appointment {
   updated_at: string;
   doctorName?: string;
   patientName?: string;
+  categoryName?: string;
 }
 
 export enum AppointmentStatus {

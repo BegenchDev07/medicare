@@ -13,6 +13,7 @@ import appointmentRoutes from './routes/appointments';
 import scheduleRoutes from './routes/schedules';
 import patientRoutes from './routes/patient';
 import doctorStatsRoutes from './routes/doctor';
+import adminRoutes from './routes/admin';
 
 // Load environment variables first
 dotenv.config();
@@ -44,6 +45,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/schedules', scheduleRoutes);
 app.use('/api/patient', patientRoutes);
 app.use('/api/doctor', doctorStatsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

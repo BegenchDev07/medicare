@@ -8,7 +8,7 @@ import Alert from '../../components/common/Alert';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { apiGet, apiPost } from '../../utils/api';
-import { Doctor, TimeSlot, DaySchedule } from '../../types';
+import { Doctor, TimeSlot, DaySchedule, Schedule, Appointment } from '../../types';
 import { format, parseISO, addDays } from 'date-fns';
 
 const BookAppointment: React.FC = () => {
@@ -18,6 +18,8 @@ const BookAppointment: React.FC = () => {
   const { showNotification } = useNotification();
   
   const [doctor, setDoctor] = useState<Doctor | null>(null);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [availableSlots, setAvailableSlots] = useState<DaySchedule[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -30,10 +32,17 @@ const BookAppointment: React.FC = () => {
     if (doctorId) {
       Promise.all([
         fetchDoctor(),
-        fetchAvailableSlots()
+        fetchDoctorSchedules(),
+        fetchDoctorAppointments()
       ]).finally(() => setLoading(false));
     }
   }, [doctorId]);
+
+  useEffect(() => {
+    if (schedules.length > 0 && appointments.length > 0) {
+      generateAvailableSlots();
+    }
+  }, [schedules, appointments]);
 
   const fetchDoctor = async () => {
     try {
@@ -48,24 +57,88 @@ const BookAppointment: React.FC = () => {
     }
   };
 
-  const fetchAvailableSlots = async () => {
+  const fetchDoctorSchedules = async () => {
     try {
-      // Generate next 7 days of slots
-      const nextWeekSlots = Array.from({ length: 7 }, (_, i) => {
-        const date = format(addDays(new Date(), i), 'yyyy-MM-dd');
+      const response = await apiGet<Schedule[]>(`/schedules/doctor/${doctorId}/available`);
+      if (response.success && response.data) {
+        setSchedules(response.data);
+      } else {
+        throw new Error(response.error || 'Failed to fetch doctor schedules');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to fetch schedules');
+    }
+  };
+
+  const fetchDoctorAppointments = async () => {
+    try {
+      const response = await apiGet<Appointment[]>(`/appointments/doctor/${doctorId}`);
+      if (response.success && response.data) {
+        setAppointments(response.data);
+      } else {
+        throw new Error(response.error || 'Failed to fetch appointments');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to fetch appointments');
+    }
+  };
+
+  const generateTimeSlots = (startTime: string, endTime: string, date: string): TimeSlot[] => {
+    const slots: TimeSlot[] = [];
+    let currentTime = startTime;
+
+    while (currentTime < endTime) {
+      // Remove seconds from the time
+      const formattedTime = currentTime.split(':').slice(0, 2).join(':');
+      
+      // Check if the slot is already booked
+      const isBooked = appointments.some(appointment => 
+        appointment.date === date &&
+        appointment.start_time === formattedTime &&
+        appointment.status !== 'cancelled'
+      );
+
+      slots.push({
+        time: formattedTime,
+        available: !isBooked
+      });
+
+      // Add 30 minutes
+      const [hours, minutes] = currentTime.split(':').map(Number);
+      const newMinutes = minutes + 30;
+      const newHours = hours + Math.floor(newMinutes / 60);
+      currentTime = `${String(newHours).padStart(2, '0')}:${String(newMinutes % 60).padStart(2, '0')}`;
+    }
+
+    return slots;
+  };
+
+  const generateAvailableSlots = () => {
+    const nextWeekSlots = Array.from({ length: 7 }, (_, i) => {
+      const date = format(addDays(new Date(), i), 'yyyy-MM-dd');
+      
+      // Find schedule for this day
+      const daySchedule = schedules.find(s => format(parseISO(s.day), 'yyyy-MM-dd') === date);
+      
+      if (!daySchedule || !daySchedule.is_available) {
         return {
           date,
-          slots: Array.from({ length: 8 }, (_, j) => ({
-            id: `${date}-${j}`,
-            time: format(new Date().setHours(9 + j, 0, 0), 'HH:mm'),
-            available: true
-          }))
+          slots: []
         };
-      });
-      setAvailableSlots(nextWeekSlots);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to fetch available slots');
-    }
+      }
+
+      // Remove seconds from the time
+      const startTime = daySchedule.start_time.split(':').slice(0, 2).join(':');
+      const endTime = daySchedule.end_time.split(':').slice(0, 2).join(':');
+
+      // Generate slots for the day's schedule
+      return {
+        date,
+        slots: generateTimeSlots(startTime, endTime, date)
+      };
+    });
+
+    setAvailableSlots(nextWeekSlots);
   };
 
   const handleBookAppointment = async () => {
@@ -78,10 +151,11 @@ const BookAppointment: React.FC = () => {
     setError(null);
 
     try {
-      const endTime = format(
-        new Date(new Date(`${selectedDate}T${selectedTime}`).getTime() + 30 * 60000),
-        'HH:mm'
-      );
+      // Calculate end time (30 minutes after start time)
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const endMinutes = minutes + 30;
+      const endHours = hours + Math.floor(endMinutes / 60);
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`;
 
       const response = await apiPost('/appointments', {
         doctor_id: doctorId,
@@ -196,12 +270,16 @@ const BookAppointment: React.FC = () => {
                   {availableSlots.map((daySchedule) => (
                     <div
                       key={daySchedule.date}
-                      onClick={() => setSelectedDate(daySchedule.date)}
+                      onClick={() => daySchedule.slots.length > 0 && setSelectedDate(daySchedule.date)}
                       className={`
-                        cursor-pointer rounded-lg p-3 text-center
+                        rounded-lg p-3 text-center
+                        ${daySchedule.slots.length === 0 
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                          : 'cursor-pointer hover:border-primary-300'
+                        }
                         ${selectedDate === daySchedule.date
                           ? 'bg-primary-100 border-2 border-primary-500'
-                          : 'bg-gray-50 border border-gray-200 hover:border-primary-300'
+                          : 'bg-gray-50 border border-gray-200'
                         }
                       `}
                     >
@@ -223,18 +301,17 @@ const BookAppointment: React.FC = () => {
                   <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                     {availableSlots
                       .find(day => day.date === selectedDate)
-                      ?.slots.map((slot) => (
+                      ?.slots.map((slot, index) => (
                         <div
-                          key={slot.id}
+                          key={index}
                           onClick={() => slot.available && setSelectedTime(slot.time)}
                           className={`
                             p-2 text-center rounded-md cursor-pointer
-                            ${!slot.available && 'opacity-50 cursor-not-allowed'}
-                            ${selectedTime === slot.time
-                              ? 'bg-primary-100 text-primary-800 border-2 border-primary-500'
-                              : slot.available
-                                ? 'bg-gray-50 text-gray-900 border border-gray-200 hover:border-primary-300'
-                                : 'bg-gray-100 text-gray-500'
+                            ${!slot.available 
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                              : selectedTime === slot.time
+                                ? 'bg-primary-100 text-primary-800 border-2 border-primary-500'
+                                : 'bg-gray-50 text-gray-900 border border-gray-200 hover:border-primary-300'
                             }
                           `}
                         >

@@ -3,9 +3,10 @@ import {
   getAppointments,
   createAppointment,
   updateAppointment,
-  cancelAppointment,
+  updateAppointmentStatus,
   getDoctorAppointments,
   getPatientAppointments,
+  getDoctorAppointmentsByDoctorId,
 } from '../controllers/appointmentController';
 import { authenticateToken, isAdmin, isDoctor } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
@@ -26,6 +27,13 @@ router.get('/', authenticateToken, isAdmin, getAppointments);
  * @access  Private/Doctor
  */
 router.get('/doctor', authenticateToken, isDoctor, getDoctorAppointments);
+
+/**
+ * @route   GET /api/appointments/doctor/:doctorId
+ * @desc    Get appointments for a specific doctor
+ * @access  Public
+ */
+router.get('/doctor/:doctorId', getDoctorAppointmentsByDoctorId);
 
 /**
  * @route   GET /api/appointments/patient
@@ -63,6 +71,6 @@ router.put(
  * @desc    Cancel an appointment
  * @access  Private
  */
-router.delete('/:id', authenticateToken, cancelAppointment);
+router.delete('/:id', authenticateToken, updateAppointmentStatus);
 
 export default router;

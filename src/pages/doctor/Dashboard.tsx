@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Users, CheckCircle } from 'lucide-react';
 import Card from '../../components/common/Card';
+import Button from '../../components/common/Button';
 import { apiGet } from '../../utils/api';
-import { AppointmentStatus } from '../../types';
+import { AppointmentStatus, Appointment } from '../../types';
+import { format, parseISO } from 'date-fns';
 
 interface DashboardStats {
   totalAppointments: number;
@@ -19,22 +21,54 @@ const DoctorDashboard: React.FC = () => {
     completedAppointments: 0,
     todayAppointments: 0,
   });
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await apiGet<DashboardStats>('/doctor/stats');
-        if (response.success && response.data) {
-          setStats(response.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch dashboard stats:', error);
-      }
-    };
-
-    fetchStats();
+    Promise.all([fetchStats(), fetchTodayAppointments()]);
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const response = await apiGet<DashboardStats>('/doctor/stats');
+      if (response.success && response.data) {
+        setStats(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+    }
+  };
+
+  const fetchTodayAppointments = async () => {
+    try {
+      const response = await apiGet<Appointment[]>('/appointments/doctor');
+      if (response.success && response.data) {
+        // Filter appointments for today
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const todaysAppointments = response.data.filter(
+          appointment => format(parseISO(appointment.date), 'yyyy-MM-dd') === today
+        );
+        setTodayAppointments(todaysAppointments);
+      }
+    } catch (error) {
+      console.error('Failed to fetch today\'s appointments:', error);
+    }
+  };
+
+  const getStatusBadgeColor = (status: AppointmentStatus) => {
+    switch (status) {
+      case AppointmentStatus.PENDING:
+        return 'bg-warning-100 text-warning-800';
+      case AppointmentStatus.CONFIRMED:
+        return 'bg-primary-100 text-primary-800';
+      case AppointmentStatus.COMPLETED:
+        return 'bg-success-100 text-success-800';
+      case AppointmentStatus.CANCELLED:
+        return 'bg-error-100 text-error-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   const statCards = [
     {
@@ -121,18 +155,43 @@ const DoctorDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                <tr>
-                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                    No appointments scheduled for today
-                  </td>
-                </tr>
+                {todayAppointments.length > 0 ? (
+                  todayAppointments.map((appointment) => (
+                    <tr key={appointment.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {appointment.start_time} - {appointment.end_time}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {appointment.patientName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(appointment.status)}`}>
+                          {appointment.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-500 line-clamp-2">
+                          {appointment.notes || 'No notes'}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                      No appointments scheduled for today
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         </Card>
       </div>
 
-      {/* Quick Actions Section */}
+      {/* Quick Actions */}
       <div className="mt-8">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
